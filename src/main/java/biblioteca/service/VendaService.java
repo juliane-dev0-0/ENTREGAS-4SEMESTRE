@@ -28,31 +28,42 @@ public class VendaService {
     private FuncionarioRepository funcionarioRepository;
 
     public Venda save(Venda venda) {
-        Cliente cliente = clienteRepository.findById(venda.getCliente().getIdCliente())
-                .orElseThrow(() -> new RuntimeException("Cliente não encontrado: ID " + venda.getCliente().getIdCliente()));
+         Optional<Cliente> clienteOpt = clienteRepository.findById(venda.getCliente().getIdCliente());
+    if (clienteOpt.isPresent()) {
+        Cliente cliente = clienteOpt.get();
         venda.setCliente(cliente);
+    } else {
+        throw new RuntimeException("Cliente não encontrado: ID " + venda.getCliente().getIdCliente());
+    }
 
-        if (venda.getFuncionario() != null) {
-            Funcionario funcionario = funcionarioRepository.findById(venda.getFuncionario().getIdFuncionario())
-                    .orElseThrow(() -> new RuntimeException("Funcionário não encontrado: ID " + venda.getFuncionario().getIdFuncionario()));
+
+       if (venda.getFuncionario() != null) {
+        Optional<Funcionario> funcionarioOpt = funcionarioRepository.findById(venda.getFuncionario().getIdFuncionario());
+        if (funcionarioOpt.isPresent()) {
+            Funcionario funcionario = funcionarioOpt.get();
             venda.setFuncionario(funcionario);
+        } else {
+            throw new RuntimeException("Funcionário não encontrado: ID " + venda.getFuncionario().getIdFuncionario());
         }
+    }
 
         List<Livro> livrosAtualizados = new ArrayList<>();
-        double valorTotal = 0;  // Inicialize o valor total
+        double valorTotal = 0;  
 
         for (Livro livro : venda.getLivro()) {
-            Livro livroBD = livroRepository.findById(livro.getIdLivro())
-                    .orElseThrow(() -> new RuntimeException("Livro não encontrado: ID " + livro.getIdLivro()));
-
-            livro.setValorTotal(livroBD.getValor() * livro.getQuantidade());
-            livrosAtualizados.add(livroBD);
-
-            valorTotal += livro.getValorTotal();  // Atualize o valor total da venda
-        }
-        
+        Optional<Livro> livroOpt = livroRepository.findById(livro.getIdLivro());
+    
+        if (livroOpt.isPresent()) {
+        Livro livroBD = livroOpt.get();
+        livro.setValorTotal(livroBD.getValor() * livro.getQuantidade());
+        livrosAtualizados.add(livroBD);
+        valorTotal += livro.getValorTotal();
+        } else {
+        throw new RuntimeException("Livro não encontrado: ID " + livro.getIdLivro());
+     }
+}
         venda.setLivro(livrosAtualizados);
-        venda.setValorTotal(valorTotal);  // Defina o valor total da venda
+        venda.setValorTotal(valorTotal);  
 
         if (cliente.getIdadeCliente() < 18 && valorTotal > 500.0) {
             throw new RuntimeException("Clientes menores de 18 anos não podem realizar compras acima de R$ 500,00.");
@@ -65,14 +76,19 @@ public class VendaService {
         return this.vendaRepository.findAll();
     }
 
-    public Venda findById(long idVenda) {
-        // Usando orElseThrow para lidar com a ausência de dados
-        return this.vendaRepository.findById(idVenda)
-                .orElseThrow(() -> new IllegalArgumentException("Venda com ID " + idVenda + " não encontrada"));
+  public Venda findById(long idVenda) {
+    Optional<Venda> venda = this.vendaRepository.findById(idVenda);
+
+    if (venda.isPresent()) {
+        return venda.get();
+    } else {
+        throw new IllegalArgumentException("Venda com ID " + idVenda + " não encontrada");
     }
+}
+
 
     public String delete(long idVenda) {
-        // Verifica se a venda existe antes de deletar
+       
         Optional<Venda> venda = this.vendaRepository.findById(idVenda);
         if (venda.isPresent()) {
             this.vendaRepository.deleteById(idVenda);
@@ -83,7 +99,7 @@ public class VendaService {
     }
 
     public String update(Venda venda, long idVenda) {
-        // Verifica se a venda existe antes de atualizar
+       
         if (this.vendaRepository.existsById(idVenda)) {
             venda.setIdVenda(idVenda);
             this.vendaRepository.save(venda);
